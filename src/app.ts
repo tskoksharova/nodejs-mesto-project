@@ -1,30 +1,35 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import mongoose from "mongoose";
 
+import usersRouter from "./routes/users";
+import cardsRouter from "./routes/cards";
+
+const { PORT = 3000 } = process.env;
 const app = express();
 
 app.use(express.json());
 
-app.get("/", (req: Request, res: Response) => {
-  res.json({ ok: true, message: "Server is running" });
+// Роуты
+app.use("/users", usersRouter);
+app.use("/cards", cardsRouter);
+
+// 404 на всё остальное
+app.use((req, res) => {
+  res.status(404).send({ message: "Ресурс не найден" });
 });
 
-const PORT = Number(process.env.PORT) || 3000;
-const DB_URL = "mongodb://localhost:27017/mestodb";
-
-async function start() {
-  try {
-    await mongoose.connect(DB_URL);
-    console.log("Connected to MongoDB");
-
-app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
+// Простой обработчик ошибок
+app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err);
+  res.status(500).send({ message: "На сервере произошла ошибка" });
 });
 
-  } catch (err) {
-    console.error("MongoDB connection error:", err);
-    process.exit(1);
-  }
-}
-
-start();
+mongoose
+  .connect("mongodb://localhost:27017/mestodb")
+  .then(() => {
+    console.log("MongoDB connected");
+    app.listen(Number(PORT), "0.0.0.0", () =>
+      console.log(`Server listening on port ${PORT}`)
+    );
+  })
+  .catch((err) => console.error("MongoDB connection error:", err));
